@@ -1,19 +1,23 @@
 from muchabase import MuchaBase
-import pickle
 import logging
+import torch
 
-class FedClient(MuchaBase):
+class FedClient:
     def __init__(self, mode="client", config=None):
         self.config = config
         self.subscriber = MuchaBase(mode=mode, conn_info=self.config["conn_info"][0], socket_type="SUB")
         self.dealer = MuchaBase(mode=mode, conn_info=self.config["conn_info"][1], socket_type="DEALER")
+        self.init_model = None
 
-    def doing(self):
-        for i in range(5):
-            payload = {"action": "register", "data": "123456"}
-            self.dealer.send([b"", pickle.dumps(payload)])       
-            response = self.dealer.recieve()
-            print(f"Received: {response[-1].decode()}")
+    def register_server(self):
+        payload = {"action": "register", "data": ""}
+        self.dealer.send(["", payload])
+        rep = self.dealer.recv()
+        logging.info(f"Receive msg: {rep}")
+
+    def recv_init_model(self):
+        rep = self.subscriber.recv()
+        self.init_model = rep
 
 def main():
     mode = "client"
@@ -33,7 +37,7 @@ def main():
     config["conn_info"] = ["tcp://127.0.0.1:5555", "tcp://127.0.0.1:6666"]
 
     fedclient = FedClient(mode=mode, config=config)
-    fedclient.doing()
+    fedclient.register_server()
 
 if __name__ == "__main__":
     main()
